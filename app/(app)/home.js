@@ -34,7 +34,7 @@ export default function HomeScreen() {
         <View style={{ flex: 1, backgroundColor: 'white' }}>
             <StatusBar style='light' />
             {users.length > 0 ? (
-                <ChatList users={users} />
+                <ChatList users={users} currentUser={user} />
             ) : (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                     <ActivityIndicator size='large' color='#6574cd' />

@@ -1,5 +1,5 @@
-import { KeyboardAvoidingView, TouchableOpacity, View, TextInput, Alert } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import { KeyboardAvoidingView, TouchableOpacity, View, TextInput, Alert, ScrollView, Keyboard } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import ChatRoomHeader from '../../components/ChatRoomHeader';
@@ -13,59 +13,80 @@ import { db } from '../../fireBaseConfig';
 
 export default function ChatRoom() {
     const item = useLocalSearchParams();
-    const {user}=useAuth()
-    const [message, setMessage] = useState('');
+    const { user } = useAuth();
+    const [message, setMessage] = useState([]);
     const router = useRouter();
-    const [text,setText]=useState('');
- 
-   useEffect(()=>{
-    createRoomIfNot();
+    const [text, setText] = useState('');
+    const scrollViewRef = useRef(null);
 
-    let roomId=getRoomId(user?.userId,item.userId);
-    const docref=doc(db,'rooms',roomId);
-    const messageRef=collection(docref,"messages")
-    const q=query(messageRef,orderBy('createdAt','asc'));
+    useEffect(() => {
+        createRoomIfNot();
 
-    let unsub=onSnapshot(q,(querySnapshot)=>{
-        let allMeaages=querySnapshot.docs.map(doc=>{
-            return doc.data();
-        })
-        setMessage([...allMeaages])
+        let roomId = getRoomId(user?.userId, item.userId);
+        const docref = doc(db, 'rooms', roomId);
+        const messageRef = collection(docref, "messages");
+        const q = query(messageRef, orderBy('createdAt', 'asc'));
 
-    })
+        let unsub = onSnapshot(q, (querySnapshot) => {
+            let allMessages = querySnapshot.docs.map(doc => doc.data());
+            setMessage(allMessages);
+            // Scroll to bottom whenever new messages are received
+            // scrollToBottom();
+        });
+        const keyBoardDidShowListner=Keyboard.addListener("keyboardDidShow",
+        scrollToBottom
+    )
+        return()=>{
+             unsub(),
+             keyBoardDidShowListner.remove();}
+            
+            ;
+    }, []);
 
-    return unsub
-   },[])
+    const createRoomIfNot = async () => {
+        let roomId = getRoomId(user?.userId, item.userId);
+        await setDoc(doc(db, "rooms", roomId), {
+            roomId,
+            createdAt: Timestamp.fromDate(new Date())
+        });
+    };
 
-   const createRoomIfNot=async()=>{
-let roomId=getRoomId(user?.userId,item.userId);
-await setDoc(doc(db,"rooms",roomId),{
-    roomId,
-    createdAt:Timestamp.fromDate(new Date())
-})
-   }
     const handleMessageSend = async () => {
-        let message=text.trim();
-        if(!message) return;
-        try{
-            let roomId=getRoomId(user?.userId,item.userId);
-            const docref=doc(db,'rooms',roomId);
-            const messageRef=collection(docref,"messages");
+        let trimmedMessage = text.trim();
+        if (!trimmedMessage) return;
+
+        try {
+            let roomId = getRoomId(user?.userId, item.userId);
+            const docref = doc(db, 'rooms', roomId);
+            const messageRef = collection(docref, "messages");
+
+            await addDoc(messageRef, {
+                userId: user?.userId,
+                text: trimmedMessage,
+                profileurl: user?.profileurl,
+                senderName: user?.username,
+                createdAt: Timestamp.fromDate(new Date())
+            });
+
+            setText('');
 
 
-            const newDoc=await addDoc(messageRef,{
-                userId:user?.userId,
-                text:message,
-                profileurl:user?.profileurl,
-                senderName:user?.username   ,
-                createdAt:Timestamp.fromDate(new Date())
-            })
-            setText('')
 
+
+        } catch (err) {
+            Alert.alert('Message', err.message);
         }
-        catch(err){
-            Alert.alert('Message',err.message)
-        }
+    };
+  
+
+
+    useEffect(()=>{
+        scrollToBottom();
+    },[message])
+    const scrollToBottom = () => {
+       setTimeout(()=>{
+        scrollViewRef?.current?.scrollToEnd({ animated: true });
+       },100)
     };
 
     return (
@@ -74,18 +95,18 @@ await setDoc(doc(db,"rooms",roomId),{
                 <StatusBar style='dark'/>
                 <ChatRoomHeader user={item} router={router}/> 
                 <View style={{ height: 3, borderBottomWidth: 1, borderColor: "#737373" }}></View>
-                <View style={{ flex: 1,justifyContent:"space-between",overflow:"visible"}}>
+                <View style={{ flex: 1, justifyContent: "space-between", overflow: "visible" }}>
+                    <MessageList message={message} currentUser={user} scrollViewRef={scrollViewRef} />
                 </View>
-                <MessageList message={message} />
                 <View style={{ marginBottom: hp(1.7), paddingTop: 4 }}> 
                     <View style={{
                         marginHorizontal: 6, flexDirection: "row", justifyContent: "center", padding: 4, borderWidth: 1,
                         borderColor: "#737373", borderRadius: 100
-                    }}>
+                    }}> 
                         <TextInput 
-                        value= {text}
-    
-                        onChangeText={(v)=>{setText(v)}}
+                        autoFocus={true}
+                            value={text}
+                            onChangeText={(v) => setText(v)}
                             placeholder='Type message...'
                             style={{ fontSize: hp(2), flex: 1, marginRight: 4, padding: 4, paddingLeft: 15 }}
                         />

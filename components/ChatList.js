@@ -4,7 +4,7 @@ import ChatItem from './ChatItem';
 import HorizontalLine from './Horizontal';
 import { heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { useRouter } from 'expo-router';
-export default function ChatList({ users }) {
+export default function ChatList({ users,currentUser }) {
     const router=useRouter();
     const renderSeparator = () => <HorizontalLine />;
 
@@ -16,7 +16,7 @@ export default function ChatList({ users }) {
                 keyExtractor={(_, index) => String(index)}
                 showsVerticalScrollIndicator={false}
                 renderItem={({ item, index }) => (
-                    <ChatItem item={item} noBorder={index === users.length - 1} router={router} index={index}
+                    <ChatItem currentUser={currentUser}  item={item} noBorder={index === users.length - 1} router={router} index={index}
                      />
                 )}
                 ItemSeparatorComponent={renderSeparator}
