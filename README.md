@@ -33,5 +33,4 @@ Paste the Firebase configuration details in firebaseconfig.js.
 
 5.Run the app:
 npx react-native run-android   # For Android
-# or
 npx react-native run-ios       # For iOS
